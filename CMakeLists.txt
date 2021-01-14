@@ -104,9 +104,9 @@ add_custom_command(
     pytorch_libs/libtorchvision.so
     LICENSE.pytorch
     include/torch
-    include/torchvision/torchvision
+    include/torchvision
   COMMAND ${CMAKE_COMMAND} -E make_directory "pytorch_libs"
-  COMMAND ${CMAKE_COMMAND} -E make_directory "include/torchvision/torchvision"
+  COMMAND ${CMAKE_COMMAND} -E make_directory "include/torchvision"
   COMMAND docker pull ${TRITON_PYTORCH_DOCKER_IMAGE}
   COMMAND docker rm pytorch_backend_ptlib || echo "error ignored..." || true
   COMMAND docker create --name pytorch_backend_ptlib ${TRITON_PYTORCH_DOCKER_IMAGE}
@@ -125,7 +125,7 @@ add_custom_command(
   COMMAND docker cp pytorch_backend_ptlib:/opt/pytorch/vision/build/libtorchvision.so pytorch_libs/libtorchvision.so 
   COMMAND docker cp pytorch_backend_ptlib:/opt/pytorch/pytorch/LICENSE LICENSE.pytorch
   COMMAND docker cp pytorch_backend_ptlib:/opt/conda/lib/python3.8/site-packages/torch/include include/torch
-  COMMAND docker cp pytorch_backend_ptlib:/opt/pytorch/vision/torchvision/csrc include/torchvision/torchvision/
+  COMMAND docker cp pytorch_backend_ptlib:/opt/pytorch/vision/torchvision/csrc include/torchvision/torchvision
   COMMAND docker rm pytorch_backend_ptlib
   COMMENT "Extracting pytorch and torchvision libraries and includes from ${TRITON_PYTORCH_DOCKER_IMAGE}"
 )
@@ -149,9 +149,7 @@ add_dependencies(ptlib ptlib_target)
 set_target_properties(
   ptlib
   PROPERTIES
-    IMPORTED_LOCATION pytorch_libs
-    IMPORTED_LOCATION include/torch
-    IMPORTED_LOCATION include/torchvision}
+    IMPORTED_LOCATION pytorch_libs/libmkl_core.so
 )
 
 add_library(
@@ -210,7 +208,7 @@ set_target_properties(
     "-Wno-unknown-pragmas -Wno-unused-but-set-variable"
 )
 
-set(TRITON_PYTORCH_LDFLAGS ${CMAKE_CURRENT_BINARY_DIR}/pytorch_libs)
+set(TRITON_PYTORCH_LDFLAGS "-L${CMAKE_CURRENT_BINARY_DIR}/pytorch_libs")
 
 target_link_libraries(
   triton-pytorch-backend
@@ -234,7 +232,6 @@ target_link_libraries(
     -lmkl_def
     -liomp5
     -lmkl_intel_thread
-    -lmkl_vml_def
 )
 
 if(${TRITON_ENABLE_GPU})
@@ -260,11 +257,11 @@ install(
   ARCHIVE DESTINATION ${CMAKE_INSTALL_PREFIX}/backends/pytorch
 )
 
-file(GLOB PYT_LIBS ${CMAKE_CURRENT_BINARY_DIR}/"pytorch_libs/*")
+file(GLOB PYT_LIBS "${CMAKE_CURRENT_BINARY_DIR}/pytorch_libs/*")
 install(
   FILES
     ${PYT_LIBS}
-    LICENSE.pytorch
+    ${CMAKE_CURRENT_BINARY_DIR}/LICENSE.pytorch
   DESTINATION ${CMAKE_INSTALL_PREFIX}/backends/pytorch
 )
 
